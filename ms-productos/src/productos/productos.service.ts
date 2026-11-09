@@ -92,6 +92,19 @@ export class ProductosService {
         return this.productosRepositorio.save(producto)
     }
 
+    async reponerStock(codigo: string, dto: DescontarStockDto): Promise<Producto> {
+        // repone el stock cuando se cancela una orden
+        const producto = await this.buscarPorCodigo(codigo)
+
+        producto.existencia += Number(dto.cantidad)
+
+        if (producto.existencia > 0 && producto.estado === 'AGOTADO') {
+            producto.estado = 'DISPONIBLE'
+        }
+
+        return this.productosRepositorio.save(producto)
+    }
+
     async eliminar(codigo: string): Promise<Producto> {
         // borrado logico pasandolo a descontinuado
         const producto = await this.buscarPorCodigo(codigo)

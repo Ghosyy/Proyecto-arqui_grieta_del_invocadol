@@ -171,6 +171,12 @@ export class PedidosService {
     async actualizarEstado(codigo: string, dto: ActualizarEstadoPedidoDto): Promise<Pedido> {
         // cambiar estado a cancelado o pendiente
         const pedido = await this.buscarPorCodigo(codigo)
+
+        // si pasa a cancelado devolvemos las existencias a ms-productos
+        if (dto.estado === 'CANCELADO' && pedido.estado !== 'CANCELADO') {
+            await this.reponerStockDePedido(pedido)
+        }
+
         pedido.estado = dto.estado
         return this.pedidosRepositorio.save(pedido)
     }
@@ -178,7 +184,31 @@ export class PedidosService {
     async eliminar(codigo: string): Promise<Pedido> {
         // borrado logico marcando el pedido como cancelado
         const pedido = await this.buscarPorCodigo(codigo)
+
+        // si no estaba cancelado devolvemos el inventario antes de cancelar
+        if (pedido.estado !== 'CANCELADO') {
+            await this.reponerStockDePedido(pedido)
+        }
+
         pedido.estado = 'CANCELADO'
         return this.pedidosRepositorio.save(pedido)
+    }
+
+    private async reponerStockDePedido(pedido: Pedido): Promise<void> {
+        // devuelve el stock de cada producto involucrado
+        if (!pedido.detalles || pedido.detalles.length === 0) return
+
+        for (const detalle of pedido.detalles) {
+            try {
+                await fetch(`${this.urlMsProductos}/${detalle.productoCodigo}/reponer`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cantidad: detalle.cantidad }),
+                    signal: AbortSignal.timeout(5000),
+                })
+            } catch (error) {
+                console.error(`Error devolviendo stock para ${detalle.productoCodigo}`, error)
+            }
+        }
     }
 }

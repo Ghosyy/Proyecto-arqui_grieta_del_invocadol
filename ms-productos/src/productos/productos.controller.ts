@@ -46,6 +46,12 @@ export class ProductosController {
         return this.productosService.descontarStock(codigo, dto)
     }
 
+    // reponer existencia cuando se cancela un pedido
+    @Patch(':codigo/reponer')
+    reponerStock(@Param('codigo') codigo: string, @Body() dto: DescontarStockDto) {
+        return this.productosService.reponerStock(codigo, dto)
+    }
+
     // eliminar producto
     @Delete(':codigo')
     eliminar(@Param('codigo') codigo: string) {
